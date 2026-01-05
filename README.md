@@ -1,54 +1,62 @@
-# Voice Agent
+# Live Voice Agent - Gemini 2.5 Flash
 
-A Pipecat example demonstrating the simplest way to create a voice agent using `WebsocketTransport`.
+A low-latency voice agent using Google's Gemini 2.5 Flash Native Audio model and Pipecat.
 
-## 🚀 Quick Start
+## 🚀 Quick Start (macOS/Linux)
 
-### 1️⃣ Start the Bot Server
+We have automated the setup process for you.
 
-#### 🔧 Set Up the Environment
-1. Create and activate a virtual environment:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+### 1. Setup
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+Run this script once to set up the Python environment, install dependencies, and prepare the client.
 
-3. Configure environment variables:
-   - Copy `env.example` to `.env`
-   ```bash
-   cp env.example .env
-   ```
-   - Add your API keys
-   - Choose what do you wish to use, 'fast_api' or 'websocket_server'
-
-#### ▶️ Run the Server
 ```bash
-python server/server.py
+chmod +x setup_mac.sh start.sh
+./setup_mac.sh
 ```
 
-### 3️⃣ Connect Using a Custom Client App
+### 2. Start
 
-For client-side setup, refer to the:
-- [Typescript Guide](client/README.md).
+Run this command to start both the Python backend and the React frontend.
 
-## ⚠️ Important Note
-Ensure the bot server is running before using any client implementations.
+```bash
+./start.sh
+```
 
-## 📌 Requirements
+- **Backend**: http://localhost:7860
+- **Frontend**: http://localhost:5173
 
-- Python **3.10+**
-- Node.js **16+** (for JavaScript components)
-- Google API Key
+## 🛠 Manual Setup
+
+If you prefer to set things up manually:
+
+**Server:**
+
+1. `python3 -m venv venv`
+2. `source venv/bin/activate`
+3. `pip install -r server/requirements.txt`
+4. Copy `server/env.example` to `server/.env` and add your `GOOGLE_API_KEY`.
+5. `python server/server.py`
+
+**Client:**
+
+1. `cd client`
+2. `npm install`
+3. `npm run dev`
+
+## 🤖 Customization
+
+### System Prompt
+
+You can customize the bot's personality and instructions by editing:
+`server/system_prompt.txt`
+
+The bot is configured to read this file dynamically.
+
+### Model
+
+Using `gemini-2.5-flash-native-audio-preview-12-2025`.
 
 ---
-
-### 💡 Notes
-- Ensure all dependencies are installed before running the server.
-- Check the `.env` file for missing configurations.
 
 Happy coding! 🎉
