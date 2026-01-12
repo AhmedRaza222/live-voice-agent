@@ -29,7 +29,8 @@ from pipecat.transports.websocket.fastapi import (
 )
 import json
 from pipecat.frames.frames import EndFrame, InputDTMFFrame
-
+import json
+from codec import ulaw2lin, lin2ulaw, resample_8k_to_16k, resample_16k_to_8k
 
 class InfobipWebsocketClient(FastAPIWebsocketClient):
     def __init__(self, websocket: WebSocket, is_binary: bool, callbacks):
@@ -72,13 +73,32 @@ class InfobipFrameSerializer(BaseFrameSerializer):
 
     async def serialize(self, frame: Frame) -> str | bytes | None:
         if isinstance(frame, OutputAudioRawFrame):
-            # logger.debug(f"Sending audio frame: {len(frame.audio)} bytes")
-            return frame.audio
+            # Transcode PCM 16kHz -> G.711 u-law 8kHz
+            try:
+                # 1. Resample 16000 -> 8000
+                audio_8k = resample_16k_to_8k(frame.audio)
+                # 2. Linear PCM -> u-law
+                ulaw_data = lin2ulaw(audio_8k)
+                return ulaw_data
+            except Exception as e:
+                logger.error(f"Error during audio serialization/transcoding: {e}")
+                return None
+                
         return None
 
     async def deserialize(self, data: str | bytes) -> Frame | None:
         if isinstance(data, bytes):
-            return InputAudioRawFrame(audio=data, num_channels=1, sample_rate=16000)
+            # Transcode G.711 u-law 8kHz -> PCM 16kHz
+            try:
+                # 1. u-law -> Linear PCM
+                pcm_8k = ulaw2lin(data)
+                # 2. Resample 8000 -> 16000
+                audio_16k = resample_8k_to_16k(pcm_8k)
+                return InputAudioRawFrame(audio=audio_16k, num_channels=1, sample_rate=16000)
+            except Exception as e:
+                logger.error(f"Error during audio deserialization/transcoding: {e}")
+                return None
+                
         if isinstance(data, str):
             logger.debug(f"Received JSON message from Infobip: {data}")
             try:
@@ -91,7 +111,7 @@ class InfobipFrameSerializer(BaseFrameSerializer):
                         logger.info(f"User pressed DTMF: {digit}")
                         return InputDTMFFrame(digits=digit)
 
-                # Handle Infobip specific events if needed
+                # Handle Infobip specific events
                 if payload.get("event") in ["callEnded", "disconnected", "hangup"]:
                     logger.info("Call ended by provider, closing pipeline.")
                     return EndFrame()
