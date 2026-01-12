@@ -12,12 +12,14 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 # Load environment variables
 load_dotenv(override=True)
 
 from bot_fast_api import run_bot
 from bot_websocket_server import run_bot_websocket_server
+from bot_infobip import run_infobip_bot
 
 
 @asynccontextmanager
@@ -38,6 +40,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files if directory exists (for production serving)
+# Needs to be "static" directory relative to current working directory or absolute path
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../static")
+if os.path.exists(static_dir):
+    app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -49,13 +57,25 @@ async def websocket_endpoint(websocket: WebSocket):
         print(f"Exception in run_bot: {e}")
 
 
+@app.websocket("/infobip")
+async def websocket_infobip_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print("Infobip WebSocket connection accepted")
+    try:
+        await run_infobip_bot(websocket)
+    except Exception as e:
+        print(f"Exception in run_infobip_bot: {e}")
+
 @app.post("/connect")
 async def bot_connect(request: Request) -> Dict[Any, Any]:
     server_mode = os.getenv("WEBSOCKET_SERVER", "fast_api")
     if server_mode == "websocket_server":
         ws_url = "ws://localhost:8765"
     else:
-        ws_url = "ws://localhost:7860/ws"
+        # Dynamic WebSocket URL generation
+        scheme = "wss" if request.url.scheme == "https" else "ws"
+        host = request.headers.get("host")
+        ws_url = f"{scheme}://{host}/ws"
     return {"ws_url": ws_url}
 
 
